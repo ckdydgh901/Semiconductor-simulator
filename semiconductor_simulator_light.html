@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>반도체 공정 트러블슈팅 시뮬레이터</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@300;400;500&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #ffffff;
+    --surface: #ffffff;
+    --surface2: #eef2f8;
+    --border: rgba(40,80,150,0.16);
+    --border2: rgba(40,80,150,0.34);
+    --accent: #2563eb;
+    --accent2: #0d9488;
+    --danger: #dc2626;
+    --warn: #d97706;
+    --text: #16202e;
+    --text2: #4a5a73;
+    --text3: #6b7c96;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans KR', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-weight: 300;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* HEADER */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(12px);
+    z-index: 100;
+  }
+  .logo {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent);
+    letter-spacing: 0.06em;
+  }
+  .logo span { color: var(--text2); }
+  .header-tag {
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--text3);
+    letter-spacing: 0.08em;
+  }
+
+  /* LAYOUT */
+  .page { max-width: 1100px; margin: 0 auto; padding: 2rem 2rem 4rem; }
+
+  /* HERO */
+  .hero {
+    padding: 3rem 0 2rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2rem;
+  }
+  .hero-eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.12em;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .hero-eyebrow::before {
+    content: '';
+    display: inline-block;
+    width: 24px;
+    height: 1px;
+    background: var(--accent);
+  }
+  .hero h1 {
+    font-size: clamp(24px, 4vw, 40px);
+    font-weight: 400;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    margin-bottom: 1rem;
+  }
+  .hero h1 em {
+    font-style: normal;
+    color: var(--accent);
+  }
+  .hero-desc {
+    font-size: 14px;
+    color: var(--text2);
+    line-height: 1.8;
+    max-width: 560px;
+  }
+
+  /* MAIN GRID */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 16px;
+    align-items: start;
+  }
+
+  /* SIDEBAR */
+  .sidebar { display: flex; flex-direction: column; gap: 12px; }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(20,40,80,0.05), 0 1px 2px rgba(20,40,80,0.04);
+  }
+  .panel-header {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    letter-spacing: 0.1em;
+  }
+  .panel-body { padding: 12px 14px; }
+
+  /* CASE LIST */
+  .case-item {
+    padding: 10px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s;
+    margin-bottom: 4px;
+    border: 1px solid transparent;
+  }
+  .case-item:hover { background: var(--surface2); }
+  .case-item.active {
+    background: rgba(58,143,255,0.08);
+    border-color: rgba(58,143,255,0.3);
+  }
+  .case-item-tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent);
+    margin-bottom: 4px;
+    letter-spacing: 0.05em;
+  }
+  .case-item-title {
+    font-size: 12px;
+    color: var(--text);
+    font-weight: 400;
+    line-height: 1.4;
+  }
+  .case-item.active .case-item-title { color: var(--accent); }
+
+  /* LEGEND */
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 7px;
+    font-size: 11px;
+    color: var(--text2);
+  }
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  /* CONDITIONS */
+  .cond-item {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+    padding: 4px 0;
+    border-bottom: 1px solid var(--border);
+    line-height: 1.5;
+  }
+  .cond-item:last-child { border-bottom: none; }
+  .cond-key { color: var(--text3); margin-right: 6px; }
+
+  /* VIEWER */
+  .viewer-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(20,40,80,0.05), 0 1px 2px rgba(20,40,80,0.04);
+  }
+  .viewer-header {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .viewer-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+    letter-spacing: 0.06em;
+  }
+  .viewer-controls { display: flex; gap: 6px; }
+  .vbtn {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.04em;
+  }
+  .vbtn:hover { background: var(--surface2); color: var(--text); }
+  .vbtn.active { background: rgba(58,143,255,0.12); border-color: var(--accent); color: var(--accent); }
+
+  #threeCanvas {
+    display: block;
+    width: 100%;
+    height: 420px;
+    cursor: grab;
+  }
+  #threeCanvas:active { cursor: grabbing; }
+
+  .viewer-hint {
+    padding: 8px 16px;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text3);
+    font-family: var(--mono);
+    letter-spacing: 0.04em;
+  }
+
+  /* SITUATION + QUIZ */
+  .bottom-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 16px;
+  }
+
+  .situation-text {
+    font-size: 13px;
+    color: var(--text2);
+    line-height: 1.9;
+  }
+  .situation-text strong {
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  /* QUIZ */
+  .quiz-q {
+    font-size: 12px;
+    color: var(--text2);
+    margin-bottom: 12px;
+    line-height: 1.7;
+    font-family: var(--mono);
+  }
+  .choice {
+    padding: 10px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text2);
+    font-size: 12px;
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+    margin-bottom: 6px;
+    transition: all 0.15s;
+    line-height: 1.5;
+    font-family: var(--sans);
+    font-weight: 300;
+  }
+  .choice:hover:not(:disabled) { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+  .choice.correct { background: rgba(0,212,170,0.08); border-color: rgba(0,212,170,0.4); color: var(--accent2); }
+  .choice.wrong { background: rgba(255,85,85,0.08); border-color: rgba(255,85,85,0.35); color: var(--danger); }
+  .choice:disabled { cursor: default; }
+
+  .feedback-box {
+    margin-top: 10px;
+    padding: 12px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    line-height: 1.8;
+    display: none;
+  }
+  .feedback-box.show { display: block; }
+  .feedback-box.success { background: rgba(0,212,170,0.06); border: 1px solid rgba(0,212,170,0.25); color: var(--accent2); }
+  .feedback-box.fail { background: rgba(255,85,85,0.06); border: 1px solid rgba(255,85,85,0.25); color: var(--danger); }
+
+  .next-btn {
+    margin-top: 10px;
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 7px 16px;
+    border-radius: 4px;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.06em;
+    display: none;
+  }
+  .next-btn.show { display: inline-block; }
+  .next-btn:hover { background: var(--surface2); color: var(--text); }
+
+  /* SCORE */
+  .score-screen {
+    text-align: center;
+    padding: 3rem 1rem;
+    display: none;
+  }
+  .score-screen.show { display: block; }
+  .score-big {
+    font-family: var(--mono);
+    font-size: 64px;
+    color: var(--accent);
+    font-weight: 500;
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+  .score-sub { font-size: 14px; color: var(--text2); margin-bottom: 2rem; }
+  .restart-btn {
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 9px 24px;
+    border-radius: 4px;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    letter-spacing: 0.06em;
+    transition: all 0.15s;
+  }
+  .restart-btn:hover { background: var(--surface2); color: var(--text); }
+
+  /* PROGRESS */
+  .progress-track {
+    height: 2px;
+    background: var(--border);
+    margin: 0 16px 0;
+    border-radius: 2px;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+
+  /* SCANLINE ATMOSPHERE */
+  .viewer-panel::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.02) 2px, rgba(0,0,0,0.02) 4px);
+    border-radius: 8px;
+  }
+  .viewer-panel { position: relative; }
+
+  /* AI DEEP DIVE */
+  .ai-panel {
+    margin-top: 16px;
+    border-color: var(--border2);
+  }
+  .ai-panel .panel-header { color: var(--accent2); }
+  .ai-intro {
+    font-size: 12px;
+    line-height: 1.7;
+    color: var(--text2);
+    margin-bottom: 12px;
+  }
+  .ai-btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 8px 16px;
+    border-radius: 4px;
+    border: 1px solid var(--accent2);
+    background: rgba(0,212,170,0.06);
+    color: var(--accent2);
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.05em;
+  }
+  .ai-btn:hover:not(:disabled) { background: rgba(0,212,170,0.14); }
+  .ai-btn:disabled { opacity: 0.5; cursor: default; }
+  .ai-question {
+    display: none;
+    margin-top: 14px;
+    padding: 12px 14px;
+    border-left: 2px solid var(--accent2);
+    background: rgba(0,212,170,0.04);
+    border-radius: 0 6px 6px 0;
+    font-size: 13px;
+    line-height: 1.75;
+    color: var(--text);
+  }
+  .ai-question.show { display: block; }
+  .ai-q-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    color: var(--accent2);
+    display: block;
+    margin-bottom: 6px;
+  }
+  .ai-answer {
+    width: 100%;
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border2);
+    background: var(--surface2);
+    color: var(--text);
+    font-family: var(--sans);
+    font-weight: 300;
+    font-size: 13px;
+    line-height: 1.6;
+    resize: vertical;
+    box-sizing: border-box;
+  }
+  .ai-answer:focus { outline: none; border-color: var(--accent2); }
+  .ai-row { display: flex; gap: 8px; margin-top: 10px; }
+  .ai-feedback {
+    display: none;
+    margin-top: 14px;
+    padding: 12px 14px;
+    border-left: 2px solid var(--accent);
+    background: rgba(58,143,255,0.05);
+    border-radius: 0 6px 6px 0;
+    font-size: 12px;
+    line-height: 1.8;
+    color: var(--text);
+    white-space: pre-wrap;
+  }
+  .ai-feedback.show { display: block; }
+  .ai-loading {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text3);
+    letter-spacing: 0.05em;
+  }
+
+  @media (max-width: 768px) {
+    .main-grid { grid-template-columns: 1fr; }
+    .bottom-grid { grid-template-columns: 1fr; }
+    header { padding: 0 1rem; }
+    .page { padding: 1.5rem 1rem 3rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">SEMI<span>_</span>SIM <span>// v0.1</span></div>
+  <div class="header-tag">반도체 공정 트러블슈팅 시뮬레이터</div>
+</header>
+
+<div class="page">
+  <div class="hero">
+    <div class="hero-eyebrow">AX 인터랙티브 콘텐츠 공모전 · 신소재공학과</div>
+    <h1>공정 결함을 <em>분석</em>하고<br>원인을 <em>추론</em>하세요</h1>
+    <p class="hero-desc">실제 반도체 공정에서 발생하는 결함 상황을 3D로 관찰하고, 원인을 분석하는 트러블슈팅 사고력을 기릅니다.</p>
+  </div>
+
+  <div class="main-grid">
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="panel">
+        <div class="panel-header">// CASE_SELECT</div>
+        <div class="panel-body" id="caseList"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-header">// LAYER_LEGEND</div>
+        <div class="panel-body" id="legendBody"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-header">// PROCESS_CONDITIONS</div>
+        <div class="panel-body" id="condBody"></div>
+      </div>
+    </div>
+
+    <!-- VIEWER -->
+    <div>
+      <div class="viewer-panel">
+        <div class="viewer-header">
+          <div class="viewer-title">// 3D_CROSS_SECTION_VIEWER</div>
+          <div class="viewer-controls">
+            <button class="vbtn" id="resetBtn">RESET</button>
+            <button class="vbtn" id="xrayBtn">X-RAY</button>
+            <button class="vbtn active" id="rotBtn">AUTO ROT</button>
+          </div>
+        </div>
+        <div class="progress-track" style="margin:8px 16px 0;">
+          <div class="progress-fill" id="progFill" style="width:0%"></div>
+        </div>
+        <canvas id="threeCanvas"></canvas>
+        <div class="viewer-hint">drag to rotate · scroll to zoom · right-drag to pan</div>
+      </div>
+
+      <div class="bottom-grid" id="bottomContent">
+        <div class="panel">
+          <div class="panel-header">// SITUATION</div>
+          <div class="panel-body">
+            <div class="situation-text" id="situationText"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header">// CAUSE_ANALYSIS</div>
+          <div class="panel-body">
+            <div class="quiz-q">가장 적절한 결함 원인을 선택하세요</div>
+            <div id="choicesWrap"></div>
+            <div class="feedback-box" id="feedbackBox"></div>
+            <button class="next-btn" id="nextBtn">NEXT CASE →</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel ai-panel" id="aiPanel" style="display:none;">
+        <div class="panel-header">// AI_DEEP_DIVE · CLAUDE</div>
+        <div class="panel-body">
+          <div class="ai-intro">정답 여부를 떠나, 이 결함을 더 깊이 사고해 봅시다. Claude가 소크라테스식 질문을 던집니다 — 정답을 알려주지 않고, 스스로 답에 도달하도록 돕습니다.</div>
+          <button class="ai-btn" id="aiAskBtn">▸ 소크라테스식 심화 질문 받기</button>
+          <div class="ai-question" id="aiQuestion"></div>
+          <textarea class="ai-answer" id="aiAnswer" rows="3" placeholder="여기에 자신의 생각을 적어보세요..." style="display:none;"></textarea>
+          <div class="ai-row" id="aiSubmitRow" style="display:none;">
+            <button class="ai-btn" id="aiSubmitBtn">답변 제출 → AI 피드백</button>
+          </div>
+          <div class="ai-feedback" id="aiFeedback"></div>
+        </div>
+      </div>
+
+      <div class="score-screen" id="scoreScreen">
+        <div class="score-big" id="scoreBig"></div>
+        <div class="score-sub" id="scoreSub"></div>
+        <button class="restart-btn" onclick="restart()">// RESTART</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const CASES = [
+  {
+    tag: 'LITHO · 노광',
+    title: '정재파 효과 (Standing Wave)',
+    conditions: [
+      ['공정','i-line 투영 노광'],
+      ['파장','365 nm (단색)'],
+      ['PR','Positive, 1.0 µm'],
+      ['하부막','poly-Si (고반사)'],
+      ['BARC','없음'],
+    ],
+    legend: [
+      {color:'#6a7f98', label:'Si 기판'},
+      {color:'#8a9bb5', label:'반사층 (poly-Si)'},
+      {color:'#c8902a', label:'PR — 수직 측벽 (정상)'},
+      {color:'#d9663a', label:'PR — 물결 측벽 (정재파)'},
+    ],
+    situation: `PR 패턴 SEM 단면에서 <strong>측벽에 일정 간격의 물결(ridge) 무늬</strong>가 관찰됨. 우측 기준 패턴은 매끈한 반면, 좌측은 주기적 요철로 측벽 거칠기가 큼. 후속 식각 시 CD 변동이 우려됨.`,
+    choices: [
+      { text: '노광량(dose)이 부족하여 PR이 충분히 노광되지 않았다.', correct: false },
+      { text: '단색 노광광이 고반사 하부막에서 반사되어 입사광과 간섭, PR 내부에 정상파를 형성했다.', correct: true },
+      { text: '현상액 농도가 높아 과현상(over-develop)이 일어났다.', correct: false },
+      { text: 'PR 점도가 높아 스핀 코팅 두께가 불균일했다.', correct: false },
+    ],
+    feedbackOK: '정확합니다. 단색 노광광이 고반사 하부막(poly-Si 등)에서 반사되며 입사광과 간섭해 PR 내부에 정상파(standing wave)가 형성되고, 노광 강도의 주기적 분포가 측벽 물결로 남습니다. 해결: ① PEB(노광 후 베이크)로 정상파 평탄화, ② BARC(반사방지막) 도입으로 반사 자체를 억제.',
+    feedbackNo: '힌트: 측벽의 "일정 간격 물결"은 빛의 간섭이 만든 흔적입니다. dose·현상·점도 문제는 CD 변화나 잔류물은 만들지만 규칙적 물결무늬는 만들지 않습니다. 빛이 어디서 반사되어 되돌아오는지 생각해 보세요.',
+    build: buildLithoStanding,
+  },
+  {
+    tag: 'LITHO · 초점',
+    title: '디포커스 — 초점 심도(DOF) 이탈',
+    conditions: [
+      ['공정','ArF 투영 노광'],
+      ['파장 / NA','193 nm / 0.93'],
+      ['PR','Positive, 0.3 µm'],
+      ['Focus','DOF 경계 이탈'],
+      ['BARC','적용'],
+    ],
+    legend: [
+      {color:'#6a7f98', label:'Si 기판'},
+      {color:'#2da882', label:'BARC / 반사방지막'},
+      {color:'#3a8fff', label:'PR — 수직 (초점 일치)'},
+      {color:'#d9663a', label:'PR — 테이퍼·라운딩 (디포커스)'},
+    ],
+    situation: `동일 dose 조건에서 일부 영역의 PR 프로파일이 수직이 아닌 <strong>테이퍼(경사) + 상단 라운딩</strong> 형상으로 관찰됨. 상단 CD가 설계 대비 축소되고 바닥에 footing이 동반됨.`,
+    choices: [
+      { text: '웨이퍼 평탄도/초점이 초점 심도(DOF)를 벗어나 공중상(aerial image) 대비가 저하되었다.', correct: true },
+      { text: '현상 시간이 길어 PR이 전반적으로 과도하게 제거되었다.', correct: false },
+      { text: '노광 파장이 설계보다 짧아 해상도가 과도하게 높아졌다.', correct: false },
+      { text: 'PR 두께가 얇아 노광광 흡수가 부족했다.', correct: false },
+    ],
+    feedbackOK: '정확합니다. 초점이 DOF를 벗어나면 공중상(aerial image)의 대비가 떨어져 측벽이 테이퍼지고 상단이 둥글어지며 CD가 변동합니다(footing 동반 가능). 해결: ① 초점·틸트 보정, ② 웨이퍼 평탄도·척 관리, ③ Focus-Exposure(Bossung) 윈도우 내 운용, BARC로 공정 마진 확보.',
+    feedbackNo: '힌트: "테이퍼 + 상단 라운딩 + CD 축소"는 상이 또렷하게 맺히지 못할 때의 전형적 프로파일입니다. 현상·파장·두께가 아니라, 상이 PR 두께 전체에 걸쳐 선명하게 맺히는지(초점)를 보세요.',
+    build: buildLithoDefocus,
+  },
+  {
+    tag: 'LITHO · 현상',
+    title: '패턴 붕괴 (Pattern Collapse)',
+    conditions: [
+      ['공정','현상·린스·건조 후'],
+      ['패턴','고종횡비 라인 (AR ≈ 5:1)'],
+      ['선폭 / 높이','40 nm / 200 nm'],
+      ['린스액','DI water'],
+      ['특성','좁은 라인 간격'],
+    ],
+    legend: [
+      {color:'#6a7f98', label:'Si 기판'},
+      {color:'#3a8fff', label:'PR 라인 (정상)'},
+      {color:'#d9663a', label:'PR 라인 (붕괴)'},
+    ],
+    situation: `고종횡비 PR 라인을 현상·건조한 후, <strong>인접 라인끼리 기울어 서로 맞닿는 패턴 붕괴(collapse)</strong>가 관찰됨. 일부 라인은 기판에서 떨어져 나감.`,
+    choices: [
+      { text: '고종횡비 라인이 린스액 건조 시, 액–공기 계면의 모세관력(표면장력)에 끌려 붕괴했다.', correct: true },
+      { text: '노광량이 과도하여 라인이 녹아내렸다.', correct: false },
+      { text: 'PEB 온도가 낮아 PR 가교가 부족했다.', correct: false },
+      { text: '하부막 반사로 정상파가 생겨 측벽이 약해졌다.', correct: false },
+    ],
+    feedbackOK: '정확합니다. 고종횡비 라인은 린스액이 마르며 액–공기 계면의 모세관력(표면장력)이 라인을 옆으로 끌어당겨 붕괴합니다(좁은 간격일수록 심함). 해결: ① 종횡비 완화(박막화·하드마스크), ② 표면장력이 낮은 린스(초임계 CO₂, IPA 치환·계면활성제), ③ PR 기계적 강도·접착력 향상.',
+    feedbackNo: '힌트: 붕괴는 "젖은 라인이 마를 때" 일어납니다. 노광량·PEB·반사는 형상이나 거칠기에 영향을 주지만, 인접 라인이 서로 끌려가 쓰러지게 만드는 힘의 근원은 건조 과정의 표면장력입니다.',
+    build: buildLithoCollapse,
+  },
+  {
+    tag: 'DRY ETCH · RIE',
+    title: '비대칭 측벽 프로파일',
+    conditions: [
+      ['공정','RIE (반응성 이온 식각)'],
+      ['가스','Cl₂ / BCl₃'],
+      ['압력','15 mTorr'],
+      ['RF Power','300 W'],
+      ['시간','60 sec'],
+    ],
+    legend: [
+      {color:'#7a8fa8', label:'Si substrate'},
+      {color:'#2da882', label:'SiO₂ barrier'},
+      {color:'#3a8fff', label:'Al metal (정상)'},
+      {color:'#ff5555', label:'Al metal (결함 — 비대칭)'},
+      {color:'#d49a28', label:'Photoresist'},
+    ],
+    situation: `Al 금속 배선 패터닝 후 SEM 단면 관찰 결과, <strong>좌측 측벽의 경사각이 우측 대비 약 12° 더 눕혀진 비대칭 프로파일</strong>이 확인됨. 하부 기판까지 잔류 Al이 남아 있으며, 배선 단락(short) 위험이 있음.`,
+    choices: [
+      { text: 'PR 패턴의 CD가 설계값보다 과도하게 컸다.', correct: false },
+      { text: '챔버 내 이온 플럭스 분포가 비균일하여 웨이퍼 위치별 식각 속도 차이가 발생했다.', correct: true },
+      { text: '식각 시간이 너무 짧아 under-etch가 발생했다.', correct: false },
+      { text: 'BCl₃ 유량이 과도하여 passivation layer가 두껍게 형성되었다.', correct: false },
+    ],
+    feedbackOK: '정확합니다. 비대칭 프로파일의 핵심 원인은 챔버 내 이온 플럭스 비균일성입니다. ESC 온도 분포 불균일 또는 가스 배플 위치 문제로 웨이퍼 면내 식각 속도 차이가 발생합니다. 해결: 척 온도 프로파일 조정, 가스 배플 최적화, RF 전력 분배 개선.',
+    feedbackNo: '힌트: 비대칭은 "방향성 있는 차이"입니다. CD, 시간, 가스 농도 문제는 전반적인 over/under-etch를 유발하지만 좌우 방향 차이를 만들지는 않습니다. 챔버 내 공간적 불균일성에 집중하세요.',
+    build: buildCase0,
+  },
+  {
+    tag: 'DRY ETCH · ICP-RIE',
+    title: '마이크로로딩 효과',
+    conditions: [
+      ['공정','ICP-RIE'],
+      ['가스','SF₆ / O₂'],
+      ['압력','8 mTorr'],
+      ['ICP Power','600 W'],
+      ['Bias','80 W'],
+    ],
+    legend: [
+      {color:'#7a8fa8', label:'Si substrate'},
+      {color:'#d49a28', label:'PR mask'},
+      {color:'#ff5555', label:'Dense trench (18µm — 얕음)'},
+      {color:'#2da882', label:'Isolated trench (28µm — 깊음)'},
+    ],
+    situation: `Si Deep Etch 후 <strong>Dense 패턴 영역 트렌치 깊이 18µm</strong>, <strong>Isolated 패턴 영역 28µm</strong>로 측정됨. 동일 웨이퍼 내 패턴 밀도에 따라 식각 깊이 편차 발생. MEMS 구조물 정밀도 저하 우려.`,
+    choices: [
+      { text: 'ICP 파워가 과도하여 플라즈마 밀도가 너무 높았다.', correct: false },
+      { text: 'Dense 영역에서 반응 부산물 농도가 높아 F* 라디칼이 소모되는 마이크로로딩 효과가 발생했다.', correct: true },
+      { text: 'O₂ 비율이 낮아 SF₆의 passivation 효과가 부족했다.', correct: false },
+      { text: 'PR 선택비가 낮아 마스크 침식이 발생했다.', correct: false },
+    ],
+    feedbackOK: '정확합니다. 마이크로로딩 효과입니다. Dense 영역은 노출 Si 면적이 커서 F* 라디칼이 빠르게 소모 → 식각 속도 저하. Isolated 영역은 라디칼이 풍부 → 더 깊이 식각. 해결: 압력 증가(라디칼 확산 향상), Bosch process 사이클 최적화, 가스 유량 증가.',
+    feedbackNo: '힌트: Dense와 Isolated 간 차이는 "라디칼 공급 vs 소모"의 균형 문제입니다. ICP 파워나 마스크 문제는 전체적 식각에 영향을 주지만, 패턴 밀도에 따른 선택적 차이를 만들지 않습니다.',
+    build: buildCase1,
+  },
+  {
+    tag: 'DRY ETCH · HARC',
+    title: '사이드월 보잉(Bowing)',
+    conditions: [
+      ['공정','Deep RIE (HARC)'],
+      ['가스','C₄F₈ / O₂ / Ar'],
+      ['압력','30 mTorr'],
+      ['종횡비','약 15 : 1'],
+      ['대상막','SiO₂ 트렌치'],
+    ],
+    legend: [
+      {color:'#6a7f98', label:'Si 기판'},
+      {color:'#c8902a', label:'PR 마스크'},
+      {color:'#0d1822', label:'식각 트렌치'},
+      {color:'#ff5555', label:'보잉 영역'},
+    ],
+    situation: `고종횡비 트렌치 식각 후 단면에서 <strong>입구는 좁고 중간 깊이가 배불뚝이처럼 부풀어 오른</strong> 보잉(bowing) 프로파일 관찰. 트렌치 중단부 선폭이 입구 대비 <strong>약 30% 확대</strong>되어, 인접 트렌치 간 절연 마진이 위협받음.`,
+    choices: [
+      { text: '측벽 패시베이션 막이 부족한 상태에서, 입구에서 산란·반사된 이온이 중단부 측벽을 추가로 때려 측면 식각이 일어났다.', correct: true },
+      { text: '식각 시간이 너무 짧아 트렌치가 설계 깊이까지 도달하지 못했다.', correct: false },
+      { text: 'O₂ 비율이 과도하게 높아 PR 마스크가 완전히 소실되었다.', correct: false },
+      { text: '기판 온도가 낮아 식각 부산물이 바닥에 재증착되었다.', correct: false },
+    ],
+    feedbackOK: '정확합니다. 보잉은 HARC 식각의 대표적 결함입니다. 측벽 보호막(passivation)이 충분히 형성되지 못한 상태에서, 트렌치 입구 모서리나 마스크에서 산란·반사된 이온이 비스듬한 각도로 중단부 측벽에 입사하면 국부적 측면 식각이 누적되어 배불뚝이 형상이 됩니다. 차징(charging)으로 인한 이온 궤도 휘어짐도 기여합니다. 해결: ① C₄F₈ 등 패시베이션 가스 비율을 높여 측벽 보호막 강화 ② bias 파워·압력을 낮춰 이온 입사각을 더 수직(이방성)으로 정렬 ③ 펄스(pulsed) 플라즈마로 차징 완화 및 식각/패시베이션 사이클 균형 조정.',
+    feedbackNo: '힌트: 보잉이 "중단부"에 집중된다는 점이 핵심입니다. 트렌치 바닥까지 똑바로 가야 할 이온이 왜 중간 깊이에서 옆벽을 때리게 되는지, 그리고 측벽을 보호해야 할 막이 그 깊이에서 어떤 상태인지 함께 생각해보세요.',
+    build: buildEtchBowing,
+  },
+  {
+    tag: 'WET ETCH · BOE',
+    title: 'Wet Etch 언더컷',
+    conditions: [
+      ['공정','Wet Etch'],
+      ['식각액','BOE (Buffered Oxide Etch)'],
+      ['온도','25°C'],
+      ['대상막','SiO₂ 500 nm'],
+      ['특성','등방성 식각'],
+    ],
+    legend: [
+      {color:'#7a8fa8', label:'Si substrate'},
+      {color:'#2da882', label:'SiO₂ (잔류)'},
+      {color:'#3a8fff', label:'SiO₂ (식각됨)'},
+      {color:'#d49a28', label:'Photoresist'},
+      {color:'#ff5555', label:'언더컷 영역'},
+    ],
+    situation: `SiO₂ Wet Etch 후 PR 패턴 아래가 심하게 파고든 <strong>언더컷(undercut)</strong> 형상 관찰. 설계 선폭 대비 실제 SiO₂ 선폭 <strong>약 200nm 축소</strong>. 미세 패턴에서 단선(open circuit) 위험.`,
+    choices: [
+      { text: 'PR 접착력이 약해 식각액이 PR 하부로 침투, lateral 식각이 과도하게 일어났다.', correct: true },
+      { text: 'BOE 농도가 너무 낮아 식각 속도가 느렸다.', correct: false },
+      { text: 'SiO₂ 막 밀도가 낮아 vertical 식각이 과도했다.', correct: false },
+      { text: '온도가 낮아 등방성 식각 특성이 억제되었다.', correct: false },
+    ],
+    feedbackOK: '정확합니다. Wet Etch는 본질적으로 등방성이라 lateral 식각이 항상 발생합니다. PR과 SiO₂ 계면의 접착력 부족 시 식각액이 모세관 현상으로 침투해 언더컷이 심화됩니다. 해결: HMDS 처리로 접착력 향상, 하드베이크 최적화, Dry Etch 전환 검토.',
+    feedbackNo: '힌트: Wet Etch의 근본 특성(등방성)을 먼저 생각해보세요. 언더컷 정도를 결정하는 핵심은 PR 마스크의 완전성, 특히 하부와의 접착력에 달려 있습니다.',
+    build: buildCase2,
+  },
+];
+
+// THREE.JS SETUP
+const canvas = document.getElementById('threeCanvas');
+const W = canvas.parentElement.offsetWidth || 680;
+const H = 420;
+canvas.width = W;
+canvas.height = H;
+
+const renderer = new THREE.WebGLRenderer({canvas, antialias: true, alpha: true});
+renderer.setSize(W, H);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setClearColor(0xeef2f7, 1);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0xeef2f7, 18, 30);
+
+const camera = new THREE.PerspectiveCamera(42, W / H, 0.1, 100);
+camera.position.set(6, 5, 9);
+camera.lookAt(0, 0, 0);
+
+const amb = new THREE.AmbientLight(0xffffff, 0.55);
+scene.add(amb);
+const dir1 = new THREE.DirectionalLight(0xffffff, 0.8);
+dir1.position.set(6, 10, 6);
+scene.add(dir1);
+const dir2 = new THREE.DirectionalLight(0xbcd0ee, 0.3);
+dir2.position.set(-5, 2, -4);
+scene.add(dir2);
+
+// Grid
+const gridHelper = new THREE.GridHelper(20, 20, 0xc2ccd9, 0xdbe2ec);
+gridHelper.position.y = -2.2;
+scene.add(gridHelper);
+
+let group = new THREE.Group();
+scene.add(group);
+
+// Interaction
+let isDrag = false, isRightDrag = false;
+let prevX = 0, prevY = 0;
+let rotX = 0.35, rotY = 0.45;
+let panX = 0, panY = 0;
+let autoRot = true;
+let xray = false;
+let score = 0, current = 0, answered = false, lastCorrect = false;
+
+canvas.addEventListener('mousedown', e => {
+  isDrag = e.button === 0;
+  isRightDrag = e.button === 2;
+  prevX = e.clientX; prevY = e.clientY;
+  autoRot = false;
+  document.getElementById('rotBtn').classList.remove('active');
+});
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+window.addEventListener('mouseup', () => { isDrag = false; isRightDrag = false; });
+window.addEventListener('mousemove', e => {
+  if (isDrag) {
+    rotY += (e.clientX - prevX) * 0.007;
+    rotX += (e.clientY - prevY) * 0.007;
+    rotX = Math.max(-1.3, Math.min(1.3, rotX));
+  }
+  if (isRightDrag) {
+    panX -= (e.clientX - prevX) * 0.01;
+    panY += (e.clientY - prevY) * 0.01;
+  }
+  prevX = e.clientX; prevY = e.clientY;
+});
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  camera.position.multiplyScalar(1 + e.deltaY * 0.001);
+}, { passive: false });
+
+// Touch
+let tPrevX = 0, tPrevY = 0;
+canvas.addEventListener('touchstart', e => { tPrevX = e.touches[0].clientX; tPrevY = e.touches[0].clientY; autoRot = false; });
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  rotY += (e.touches[0].clientX - tPrevX) * 0.01;
+  rotX += (e.touches[0].clientY - tPrevY) * 0.01;
+  rotX = Math.max(-1.3, Math.min(1.3, rotX));
+  tPrevX = e.touches[0].clientX; tPrevY = e.touches[0].clientY;
+}, { passive: false });
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  rotX = 0.35; rotY = 0.45; panX = 0; panY = 0;
+  camera.position.set(6, 5, 9);
+});
+document.getElementById('xrayBtn').addEventListener('click', () => {
+  xray = !xray;
+  document.getElementById('xrayBtn').classList.toggle('active', xray);
+  loadCase(current);
+});
+document.getElementById('rotBtn').addEventListener('click', () => {
+  autoRot = !autoRot;
+  document.getElementById('rotBtn').classList.toggle('active', autoRot);
+});
+
+// Material helper
+function mat(hex, opacity = 1) {
+  return new THREE.MeshPhongMaterial({
+    color: hex,
+    transparent: opacity < 1,
+    opacity,
+    side: THREE.DoubleSide,
+    shininess: 40,
+  });
+}
+function addBox(w, h, d, x, y, z, material) {
+  const geo = new THREE.BoxGeometry(w, h, d);
+  const mesh = new THREE.Mesh(geo, material);
+  mesh.position.set(x, y, z);
+  group.add(mesh);
+  const edges = new THREE.LineSegments(
+    new THREE.EdgesGeometry(geo),
+    new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.2 })
+  );
+  edges.position.copy(mesh.position);
+  group.add(edges);
+  return mesh;
+}
+function addCone(r, h, x, y, z, hex, rx = 0, rz = 0) {
+  const m = new THREE.Mesh(new THREE.ConeGeometry(r, h, 10), new THREE.MeshPhongMaterial({ color: hex }));
+  m.position.set(x, y, z);
+  m.rotation.x = rx; m.rotation.z = rz;
+  group.add(m);
+}
+
+function buildCase0(xr) {
+  const op = xr ? 0.2 : 1;
+  addBox(7, 0.9, 3.2, 0, -1.35, 0, mat(0x6a7f98, op));
+  addBox(7, 0.3, 3.2, 0, -0.75, 0, mat(0x2a9872, op));
+  // normal right pillar
+  addBox(1.1, 0.75, 2.6, 1.6, -0.1, 0, mat(0x3a8fff, op));
+  addBox(1.1, 0.22, 2.6, 1.6, 0.38, 0, mat(0xc8902a, op));
+  // defect left pillar (tilted)
+  const lm = addBox(0.95, 0.75, 2.6, -1.65, -0.1, 0, mat(0xff4444, op));
+  lm.rotation.z = 0.2;
+  addBox(0.95, 0.22, 2.6, -1.65, 0.38, 0, mat(0xc8902a, op));
+  // indicator
+  addCone(0.12, 0.4, -2.6, 0.1, 0, 0xe24b4a, 0, -Math.PI / 2);
+}
+
+function buildCase1(xr) {
+  const op = xr ? 0.2 : 1;
+  addBox(8.5, 0.3, 3.2, 0, -1.8, 0, mat(0x6a7f98, op));
+  // dense trenches (shallow) — 3 pillars close together
+  [-3.0, -1.7, -0.4].forEach(x => {
+    addBox(0.6, 1.0, 2.6, x, -1.1, 0, mat(0x6a7f98, op));
+    addBox(0.48, 0.95, 2.4, x, -1.12, 0, mat(0x1a2535, xr ? 0.08 : 0.9));
+    addBox(0.6, 0.22, 2.6, x, -0.48, 0, mat(0xc8902a, op));
+  });
+  // isolated trench (deep)
+  addBox(0.8, 1.65, 2.6, 2.5, -0.85, 0, mat(0x6a7f98, op));
+  addBox(0.65, 1.6, 2.4, 2.5, -0.87, 0, mat(0x0d1822, xr ? 0.08 : 0.92));
+  addBox(0.8, 0.22, 2.6, 2.5, -0.48, 0, mat(0xc8902a, op));
+  // depth arrows
+  addCone(0.09, 0.3, -1.7, -1.65, 1.8, 0xff4444);
+  addCone(0.09, 0.3, 2.5, -1.95, 1.8, 0x2da882, Math.PI);
+}
+
+function buildCase2(xr) {
+  const op = xr ? 0.2 : 1;
+  addBox(7, 0.7, 3.2, 0, -1.15, 0, mat(0x6a7f98, op));
+  // etched SiO2 sides
+  addBox(2.2, 0.35, 3.2, -2.8, -0.62, 0, mat(0x2266bb, op));
+  addBox(2.2, 0.35, 3.2, 2.8, -0.62, 0, mat(0x2266bb, op));
+  // remaining SiO2 center (narrower than PR)
+  addBox(1.5, 0.35, 3.2, 0, -0.62, 0, mat(0x2da882, op));
+  // PR wider (overhang)
+  addBox(2.1, 0.28, 3.2, 0, -0.24, 0, mat(0xc8902a, op));
+  // undercut highlight
+  addBox(0.32, 0.35, 3.2, -0.91, -0.62, 0, mat(0xff3333, xr ? 0.1 : 0.6));
+  addBox(0.32, 0.35, 3.2, 0.91, -0.62, 0, mat(0xff3333, xr ? 0.1 : 0.6));
+  // lateral arrows
+  addCone(0.1, 0.3, -1.4, -0.62, 1.8, 0xff4444, 0, Math.PI / 2);
+  addCone(0.1, 0.3, 1.4, -0.62, 1.8, 0xff4444, 0, -Math.PI / 2);
+}
+
+// box that tilts mesh AND its edge outline together (for leaning lines)
+function addTiltedBox(w, h, d, x, y, z, material, tiltZ) {
+  const geo = new THREE.BoxGeometry(w, h, d);
+  const mesh = new THREE.Mesh(geo, material);
+  mesh.position.set(x, y, z);
+  mesh.rotation.z = tiltZ;
+  group.add(mesh);
+  const edges = new THREE.LineSegments(
+    new THREE.EdgesGeometry(geo),
+    new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.2 })
+  );
+  edges.position.copy(mesh.position);
+  edges.rotation.z = tiltZ;
+  group.add(edges);
+  return mesh;
+}
+// squished sphere = rounded resist cap
+function addDome(rx, ry, rz, x, y, z, hex, op) {
+  const m = new THREE.Mesh(new THREE.SphereGeometry(1, 18, 12), mat(hex, op));
+  m.scale.set(rx, ry, rz);
+  m.position.set(x, y, z);
+  group.add(m);
+  return m;
+}
+
+// LITHO — 정재파(standing wave): 좌 물결 측벽(결함) vs 우 수직 측벽(정상)
+function buildLithoStanding(xr) {
+  const op = xr ? 0.2 : 1;
+  addBox(7.2, 0.7, 3.2, 0, -1.7, 0, mat(0x6a7f98, op));   // Si 기판
+  addBox(7.2, 0.28, 3.2, 0, -1.2, 0, mat(0x8a9bb5, op));  // 고반사 하부막
+  const slabH = 0.17, n = 9, base = -1.0;
+  // 좌측: 정재파로 측벽에 주기적 물결
+  for (let i = 0; i < n; i++) {
+    const w = 1.25 + 0.16 * Math.sin(i * 1.7);
+    addBox(w, slabH, 2.5, -1.85, base + i * slabH, 0, mat(0xd9663a, op));
+  }
+  addCone(0.1, 0.28, -3.0, base + 1.5 * slabH, 1.6, 0xff5555, 0, -Math.PI / 2);
+  addCone(0.1, 0.28, -3.0, base + 4.5 * slabH, 1.6, 0xff5555, 0, -Math.PI / 2);
+  addCone(0.1, 0.28, -3.0, base + 7.5 * slabH, 1.6, 0xff5555, 0, -Math.PI / 2);
+  // 우측: 매끈한 수직 측벽
+  addBox(1.25, slabH * n, 2.5, 1.85, base + (slabH * n) / 2 - slabH / 2, 0, mat(0xc8902a, op));
+}
+
+// LITHO — 디포커스(DOF 이탈): 좌 테이퍼+라운딩(결함) vs 우 수직(정상)
+function buildLithoDefocus(xr) {
+  const op = xr ? 0.2 : 1;
+  addBox(7.2, 0.7, 3.2, 0, -1.7, 0, mat(0x6a7f98, op));    // Si 기판
+  addBox(7.2, 0.22, 3.2, 0, -1.24, 0, mat(0x2da882, op));  // BARC
+  // 우측: 초점 일치 — 수직 측벽, 평평한 상단
+  addBox(1.2, 1.3, 2.5, 1.9, -0.45, 0, mat(0x3a8fff, op));
+  // 좌측: 디포커스 — footing + 테이퍼 스택 + 둥근 상단
+  addBox(1.7, 0.18, 2.5, -1.9, -1.0, 0, mat(0xd9663a, op));
+  [[1.45, 0.26, -0.82], [1.2, 0.26, -0.56], [0.95, 0.26, -0.30], [0.7, 0.22, -0.06]]
+    .forEach(([w, h, y]) => addBox(w, h, 2.5, -1.9, y, 0, mat(0xd9663a, op)));
+  addDome(0.42, 0.3, 1.25, -1.9, 0.08, 0, 0xd9663a, op);
+  addCone(0.1, 0.28, 1.9, 0.5, 1.6, 0x2da882, Math.PI);
+  addCone(0.1, 0.28, -1.9, 0.5, 1.6, 0xff5555, Math.PI);
+}
+
+// LITHO — 패턴 붕괴(collapse): 고종횡비 라인 일부가 기울어 맞닿음
+function buildLithoCollapse(xr) {
+  const op = xr ? 0.2 : 1;
+  addBox(7.2, 0.5, 3.0, 0, -1.75, 0, mat(0x6a7f98, op)); // Si 기판
+  const lh = 1.75, lw = 0.32, baseY = -0.6;
+  // [중심 x, 기울기, 색] — 정상(파랑) / 붕괴(주황)
+  const lines = [
+    [-2.5, 0, 0x3a8fff],
+    [-1.5, 0.34, 0xd9663a],
+    [-0.55, -0.36, 0xd9663a],
+    [0.9, 0, 0x3a8fff],
+    [2.2, 0.22, 0xd9663a],
+  ];
+  lines.forEach(([x, tilt, color]) => {
+    const xc = x - (lh / 2) * Math.sin(tilt); // 밑동 고정 → 기운 느낌
+    addTiltedBox(lw, lh, 2.5, xc, baseY, 0, mat(color, op), tilt);
+  });
+}
+
+// ETCH — 사이드월 보잉(bowing): 트렌치 깊이 중앙부가 바깥으로 불룩
+function buildEtchBowing(xr) {
+  const op = xr ? 0.2 : 1;
+  addBox(7.2, 0.45, 3.0, 0, -1.7, 0, mat(0x6a7f98, op));    // 바닥 Si
+  addBox(2.8, 2.3, 3.0, -1.9, -0.55, 0, mat(0x6a7f98, op)); // 좌 Si 벽
+  addBox(2.8, 2.3, 3.0, 1.9, -0.55, 0, mat(0x6a7f98, op));  // 우 Si 벽
+  addBox(2.8, 0.26, 3.0, -1.9, 0.73, 0, mat(0xc8902a, op)); // PR 마스크
+  addBox(2.8, 0.26, 3.0, 1.9, 0.73, 0, mat(0xc8902a, op));
+  const n = 10, slabH = 0.2, base = -1.4, mid = Math.floor(n / 2);
+  for (let i = 0; i < n; i++) {
+    const bow = 0.95 + 0.6 * Math.sin((i / (n - 1)) * Math.PI); // 중앙 최대
+    addBox(bow, slabH, 2.95, 0, base + i * slabH, 0, mat(0x0d1822, xr ? 0.08 : 0.94));
+  }
+  const midY = base + mid * slabH;
+  addBox(0.18, slabH * 1.4, 2.6, -0.77, midY, 0, mat(0xff3333, xr ? 0.12 : 0.5));
+  addBox(0.18, slabH * 1.4, 2.6, 0.77, midY, 0, mat(0xff3333, xr ? 0.12 : 0.5));
+  addCone(0.1, 0.3, -1.55, midY, 1.7, 0xff5555, 0, Math.PI / 2);
+  addCone(0.1, 0.3, 1.55, midY, 1.7, 0xff5555, 0, -Math.PI / 2);
+}
+
+function clearGroup() {
+  while (group.children.length) group.remove(group.children[0]);
+}
+
+function loadCase(idx) {
+  current = idx;
+  answered = false;
+  clearGroup();
+  const c = CASES[idx];
+  c.build(xray);
+
+  // progress
+  document.getElementById('progFill').style.width = ((idx / CASES.length) * 100) + '%';
+
+  // sidebar
+  buildCaseList(idx);
+  buildLegend(c.legend);
+  buildConditions(c.conditions);
+
+  // situation
+  document.getElementById('situationText').innerHTML = c.situation;
+
+  // choices
+  const wrap = document.getElementById('choicesWrap');
+  wrap.innerHTML = c.choices.map((ch, i) =>
+    `<button class="choice" onclick="choose(${i})">${String.fromCharCode(65 + i)}. ${ch.text}</button>`
+  ).join('');
+
+  // feedback reset
+  const fb = document.getElementById('feedbackBox');
+  fb.className = 'feedback-box';
+  fb.textContent = '';
+  document.getElementById('nextBtn').className = 'next-btn';
+  document.getElementById('bottomContent').style.display = '';
+  document.getElementById('scoreScreen').className = 'score-screen';
+  document.getElementById('aiPanel').style.display = 'none';
+  resetAIInner();
+}
+
+function buildCaseList(active) {
+  document.getElementById('caseList').innerHTML = CASES.map((c, i) => `
+    <div class="case-item ${i === active ? 'active' : ''}" onclick="loadCase(${i})">
+      <div class="case-item-tag">${c.tag}</div>
+      <div class="case-item-title">${c.title}</div>
+    </div>
+  `).join('');
+}
+
+function buildLegend(items) {
+  document.getElementById('legendBody').innerHTML = items.map(it => `
+    <div class="legend-item">
+      <div class="legend-dot" style="background:${it.color};"></div>
+      <span>${it.label}</span>
+    </div>
+  `).join('');
+}
+
+function buildConditions(conds) {
+  document.getElementById('condBody').innerHTML = conds.map(([k, v]) => `
+    <div class="cond-item"><span class="cond-key">${k}</span>${v}</div>
+  `).join('');
+}
+
+function choose(idx) {
+  if (answered) return;
+  answered = true;
+  const c = CASES[current];
+  const btns = document.querySelectorAll('.choice');
+  btns.forEach(b => b.disabled = true);
+  const ok = c.choices[idx].correct;
+  btns[idx].className = 'choice ' + (ok ? 'correct' : 'wrong');
+  if (!ok) c.choices.forEach((ch, i) => { if (ch.correct) btns[i].className = 'choice correct'; });
+  if (ok) score++;
+  const fb = document.getElementById('feedbackBox');
+  fb.textContent = ok ? '✓ ' + c.feedbackOK : '✗ ' + c.feedbackNo;
+  fb.className = 'feedback-box show ' + (ok ? 'success' : 'fail');
+  document.getElementById('nextBtn').className = 'next-btn show';
+  lastCorrect = ok;
+  resetAIInner();
+  document.getElementById('aiPanel').style.display = 'block';
+}
+
+document.getElementById('nextBtn').addEventListener('click', () => {
+  if (current + 1 >= CASES.length) {
+    document.getElementById('bottomContent').style.display = 'none';
+    document.getElementById('aiPanel').style.display = 'none';
+    const ss = document.getElementById('scoreScreen');
+    ss.className = 'score-screen show';
+    document.getElementById('scoreBig').textContent = score + ' / ' + CASES.length;
+    document.getElementById('scoreSub').textContent =
+      score === CASES.length ? '완벽합니다. 공정 트러블슈팅 감각이 뛰어납니다.' :
+      score >= Math.ceil(CASES.length * 0.7) ? '좋습니다. 핵심 개념을 잘 이해하고 있습니다.' :
+      score >= Math.ceil(CASES.length * 0.4) ? '괜찮습니다. 틀린 케이스의 메커니즘을 다시 정리해보세요.' :
+      '다시 풀어보며 각 결함의 원인을 정리해보세요.';
+    document.getElementById('progFill').style.width = '100%';
+    buildCaseList(-1);
+  } else {
+    loadCase(current + 1);
+  }
+});
+
+function restart() {
+  score = 0;
+  loadCase(0);
+}
+
+// AI DEEP DIVE — Claude Socratic feedback
+const AI_SYS = '당신은 반도체 공정을 가르치는 소크라테스식 튜터입니다. 학생에게 정답을 직접 알려주지 않습니다. 대신 학생이 스스로 원리에 도달하도록 핵심을 찌르는 질문을 던지거나, 사고의 빈틈을 짚어주는 힌트만 줍니다. 항상 한국어로, 따뜻하지만 간결하게 답합니다. 전문 용어는 학부 수준에 맞춰 사용합니다.';
+
+let aiLastQuestion = '';
+let aiLastContext = '';
+
+async function askClaude(messages, system) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1000,
+      system: system,
+      messages: messages,
+    }),
+  });
+  if (!res.ok) throw new Error('API ' + res.status);
+  const data = await res.json();
+  return (data.content || [])
+    .map(b => (b.type === 'text' ? b.text : ''))
+    .filter(Boolean)
+    .join('\n')
+    .trim();
+}
+
+function caseContext(c, correct) {
+  const strip = s => String(s).replace(/<[^>]+>/g, '');
+  const conds = c.conditions.map(([k, v]) => k + ': ' + v).join(', ');
+  const correctChoice = (c.choices.find(ch => ch.correct) || {}).text || '';
+  return [
+    '[공정 결함 케이스]',
+    '제목: ' + c.title + ' (' + c.tag + ')',
+    '공정 조건: ' + conds,
+    '결함 상황: ' + strip(c.situation),
+    '핵심 원인(정답): ' + strip(correctChoice),
+    '학생의 선택 결과: ' + (correct ? '정답을 맞혔습니다.' : '오답을 골랐습니다.'),
+  ].join('\n');
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function resetAIInner() {
+  aiLastQuestion = '';
+  aiLastContext = '';
+  const q = document.getElementById('aiQuestion');
+  q.className = 'ai-question';
+  q.innerHTML = '';
+  const ans = document.getElementById('aiAnswer');
+  ans.style.display = 'none';
+  ans.value = '';
+  document.getElementById('aiSubmitRow').style.display = 'none';
+  const fb = document.getElementById('aiFeedback');
+  fb.className = 'ai-feedback';
+  fb.innerHTML = '';
+  const ask = document.getElementById('aiAskBtn');
+  ask.disabled = false;
+  ask.textContent = '▸ 소크라테스식 심화 질문 받기';
+}
+
+function aiError(target, e) {
+  target.className = 'ai-feedback show';
+  target.style.whiteSpace = 'pre-wrap';
+  target.innerHTML = '<span style="color:var(--warn)">⚠ AI 심화 피드백은 claude.ai 아티팩트 안에서 실행될 때 작동합니다.\n로컬 파일이나 외부 서버에서는 본인의 Anthropic API 키를 연결해야 합니다.</span>';
+}
+
+document.getElementById('aiAskBtn').addEventListener('click', async () => {
+  const c = CASES[current];
+  const ask = document.getElementById('aiAskBtn');
+  const q = document.getElementById('aiQuestion');
+  ask.disabled = true;
+  q.className = 'ai-question show';
+  q.innerHTML = '<span class="ai-loading">Claude가 질문을 생각하고 있습니다…</span>';
+  try {
+    aiLastContext = caseContext(c, lastCorrect);
+    const prompt = aiLastContext + '\n\n위 케이스를 학생이 방금 분석했습니다. 학생의 사고를 한 단계 확장시킬 소크라테스식 후속 질문을 정확히 1개만 던져주세요. 정답이나 해결책을 직접 말하지 말고, 질문 형태로만 답하세요.';
+    const out = await askClaude([{ role: 'user', content: prompt }], AI_SYS);
+    aiLastQuestion = out;
+    q.innerHTML = '<span class="ai-q-label">CLAUDE ▸ 후속 질문</span>' + escapeHtml(out);
+    const ans = document.getElementById('aiAnswer');
+    ans.style.display = 'block';
+    document.getElementById('aiSubmitRow').style.display = 'flex';
+    ask.textContent = '▸ 다른 질문 받기';
+    ask.disabled = false;
+  } catch (e) {
+    aiError(q, e);
+    ask.disabled = false;
+  }
+});
+
+document.getElementById('aiSubmitBtn').addEventListener('click', async () => {
+  const ans = document.getElementById('aiAnswer').value.trim();
+  const fb = document.getElementById('aiFeedback');
+  const btn = document.getElementById('aiSubmitBtn');
+  if (!ans) {
+    fb.className = 'ai-feedback show';
+    fb.innerHTML = '<span style="color:var(--text2)">먼저 자신의 생각을 적어보세요.</span>';
+    return;
+  }
+  btn.disabled = true;
+  fb.className = 'ai-feedback show';
+  fb.innerHTML = '<span class="ai-loading">Claude가 답변을 검토하고 있습니다…</span>';
+  try {
+    const followUp = '학생의 답변: "' + ans + '"\n\n이 답변에 대해 정답을 직접 알려주지 말고, 학생이 스스로 더 깊이 생각하도록 안내하는 피드백을 2~3문장으로 해주세요. 맞게 짚은 부분은 인정해주고, 놓친 관점이 있다면 또 다른 질문으로 유도하세요.';
+    const messages = [
+      { role: 'user', content: aiLastContext + '\n\n학생의 사고를 확장시킬 소크라테스식 후속 질문을 1개 던져주세요.' },
+      { role: 'assistant', content: aiLastQuestion },
+      { role: 'user', content: followUp },
+    ];
+    const out = await askClaude(messages, AI_SYS);
+    fb.innerHTML = '<span class="ai-q-label" style="color:var(--accent)">CLAUDE ▸ 피드백</span>' + escapeHtml(out);
+    btn.disabled = false;
+  } catch (e) {
+    aiError(fb, e);
+    btn.disabled = false;
+  }
+});
+
+// ANIMATE
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  if (autoRot) rotY += 0.004;
+  group.rotation.x = rotX;
+  group.rotation.y = rotY;
+  group.position.x = panX;
+  group.position.y = panY;
+  renderer.render(scene, camera);
+}
+
+loadCase(0);
+animate();
+</script>
+</body>
+</html>
